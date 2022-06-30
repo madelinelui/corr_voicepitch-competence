@@ -1,0 +1,153 @@
+---
+title: "voices acoustic data"
+author: '2610922'
+date: "1/22/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r set up}
+library(tidyverse)
+library(broom)
+library(pwr)
+library(performance)
+library(see)
+acoustic_dat <- read_csv("VoiceAcoustics.csv")
+rating_dat <- read_csv("VoiceRatingsData.csv")
+voicedem <- read_csv("VoiceDemographics.csv")
+parti_dem <- read_csv("ParticipantDemographics.csv")
+
+```
+
+```{r voice_sex}
+
+
+t_test_df <- acoustic_dat %>%
+  filter(Condition %in% c("RW")) %>%
+  select(Voice_Sex, pitch_mean)
+
+ggplot(t_test_df, aes(x=Voice_Sex, y=pitch_mean))+
+  geom_boxplot()+
+  labs(x="Voice Sex", y="Mean Pitch / Hz")+
+  theme_bw()
+ggsave("pitchmean.png", plot=last_plot(), width=16, height=10, units="cm", dpi=300)
+
+pitch_t <- t.test(t_test_df %>% 
+                        filter(Voice_Sex == "F") %>% 
+                        pull(pitch_mean),
+                      t_test_df %>% 
+                        filter(Voice_Sex == "M") %>% 
+                        pull(pitch_mean),
+                      var.equal = TRUE) %>%
+  tidy()
+
+```
+
+```{r group}
+parti_dem2 <- rating_dat %>%
+  filter(Condition %in% c("RW"), RatingCount=="Rating1", Trait=="Competence")%>%
+  distinct(ParticipantID) %>%
+  left_join(parti_dem) %>%
+  group_by(Gender) %>%
+  summarise(n=n(),
+            mean_age=mean(Age),
+            sd_age=sd(Age))
+
+count(parti_dem, Nationality, sort = TRUE)
+
+  
+ comp_dat <- rating_dat %>%
+  filter(Condition %in% c("RW"), RatingCount=="Rating1", Trait=="Competence")%>%
+  group_by(VoiceCode, Voice_Sex) %>%
+  summarise(mean_comp=mean(ResponseGiven))
+
+acoustic_dat2 <- acoustic_dat %>%
+  filter(Condition %in% c("RW"))%>%
+  select(VoiceCode, Voice_Sex, pitch_mean)
+
+voice_comp <- inner_join(comp_dat, acoustic_dat2) %>%
+  mutate(Voice_Sex=dplyr::recode(Voice_Sex,
+                                 "F"="Female",
+                                 "M"="Male"))
+
+pwr.t.test(n=30,
+           d = NULL,
+           power = .8,
+           sig.level = .05,
+           alternative = "two.sided",
+           type = "two.sample")
+
+
+```
+
+```{r Pearson correlation}
+ggplot(voice_comp, aes(x=mean_comp, y=pitch_mean))+
+  geom_point()+
+  labs(x="Perceived Competence", y="Mean Pitch")+
+  facet_wrap(~Voice_Sex)+
+  geom_smooth(method=lm)+
+  theme_bw()
+
+ggplot(voice_comp, aes(mean_comp))+
+  geom_histogram(color="white", binwidth=15)
+
+
+ggsave("pearsoncor.png", plot=last_plot(), width=16, height=10, units="cm", dpi=300)
+
+voice_comp_m <- voice_comp %>%
+  filter(Voice_Sex=="Male")
+
+voice_comp_f <- voice_comp %>%
+  filter(Voice_Sex=="Female")
+
+male_cor <- cor.test(voice_comp_m$mean_comp, voice_comp_m$pitch_mean, method = "pearson", alternative = "two.sided") %>%
+  broom::tidy()
+female_cor <- cor.test(voice_comp_f$mean_comp, voice_comp_f$pitch_mean, method = "pearson", alternative = "two.sided") %>%
+  broom::tidy()
+
+mod <- lm(pitch_mean~mean_comp, voice_comp_m)
+ggplot(mod, aes(sample=.resid))+
+  stat_qq()+
+  stat_qq_line()
+
+mod2 <- lm(pitch_mean~mean_comp, voice_comp_f)
+ggplot(mod2, aes(sample=.resid))+
+  stat_qq()+
+  stat_qq_line()
+```
+
+```{r descrp}
+male_dat <- acoustic_dat %>%
+  filter(Voice_Sex=="M") %>%
+  filter(Condition=="RW") %>%
+  select(VoiceCode, pitch_mean, pitch_stdev, pitch_min, pitch_max)
+female_dat <- acoustic_dat %>%
+  filter(Voice_Sex=="F") %>%
+  filter(Condition=="RW") %>%
+  select(VoiceCode, pitch_mean, pitch_stdev, pitch_min, pitch_max)
+#male
+mean(male_dat$pitch_mean)
+mean(male_dat$pitch_stdev)
+mean(male_dat$pitch_min)
+mean(male_dat$pitch_max)
+median(male_dat$pitch_mean)
+#female
+mean(female_dat$pitch_mean)
+mean(female_dat$pitch_stdev)
+mean(female_dat$pitch_min)
+mean(female_dat$pitch_max)
+median(female_dat$pitch_mean)
+```
+```{r t-test for diff in voice pitch}
+summarystat <- data.frame(mean_m = c(123.12),
+                    mean_f = c(204.36),
+                    var_m = c(39.67^2),
+                    var_f = c(39.31^2))
+
+
+tval <- (81.24)/(sqrt(((39.31^2)/30)+(39.67^2)/30))
+
+```
