@@ -118,30 +118,7 @@ ggplot(mod2, aes(sample=.resid))+
   stat_qq()+
   stat_qq_line()
 ```
-
-```{r descrp}
-male_dat <- acoustic_dat %>%
-  filter(Voice_Sex=="M") %>%
-  filter(Condition=="RW") %>%
-  select(VoiceCode, pitch_mean, pitch_stdev, pitch_min, pitch_max)
-female_dat <- acoustic_dat %>%
-  filter(Voice_Sex=="F") %>%
-  filter(Condition=="RW") %>%
-  select(VoiceCode, pitch_mean, pitch_stdev, pitch_min, pitch_max)
-#male
-mean(male_dat$pitch_mean)
-mean(male_dat$pitch_stdev)
-mean(male_dat$pitch_min)
-mean(male_dat$pitch_max)
-median(male_dat$pitch_mean)
-#female
-mean(female_dat$pitch_mean)
-mean(female_dat$pitch_stdev)
-mean(female_dat$pitch_min)
-mean(female_dat$pitch_max)
-median(female_dat$pitch_mean)
-```
-```{r t-test for diff in voice pitch}
+```{r t-test for voice pitch}
 summarystat <- data.frame(mean_m = c(123.12),
                     mean_f = c(204.36),
                     var_m = c(39.67^2),
